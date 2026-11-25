@@ -80,6 +80,10 @@ function DragFace({ id, selected, onTap, onDrop }: { id: string; selected: boole
       s.ghost = g;
     }
     if (s.ghost) {
+      // auto-scroll when dragging near the screen edges (small phones)
+      const edge = 70, vh = window.innerHeight;
+      if (e.clientY < edge) window.scrollBy(0, -14);
+      else if (e.clientY > vh - edge) window.scrollBy(0, 14);
       s.ghost.style.left = e.clientX - 28 + 'px';
       s.ghost.style.top = e.clientY - 28 + 'px';
       document.querySelectorAll('.drop-hover').forEach((el) => el.classList.remove('drop-hover'));

@@ -89,5 +89,7 @@ export async function act(fn: () => Promise<unknown>, okMsg?: string): Promise<b
 }
 
 if (typeof window !== 'undefined') {
-  window.addEventListener('focus', () => { if (state.meId) refresh().catch(() => {}); });
+  const again = () => { if (state.meId && document.visibilityState === 'visible') refresh().catch(() => {}); };
+  window.addEventListener('focus', again);
+  document.addEventListener('visibilitychange', again);
 }

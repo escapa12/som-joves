@@ -21,7 +21,7 @@ function Ranking() {
   const empty = scores.every((s) => s.attendances === 0 && s.adjustments === 0);
   return (
     <div class="page has-fab">
-      <Header title="Rànquing d'assistència" back="" right={isAdmin() && <a class="iconbtn" href={href('assistencia/config')} aria-label="Configuració">⚙</a>} />
+      <Header title="Rànquing" back="" right={isAdmin() && <a class="iconbtn" href={href('assistencia/config')} aria-label="Configuració">⚙</a>} />
       <Segmented value={period} options={PERIODS} onChange={setPeriod} />
       <div class="chips">
         <button class={'chip' + (type === null ? ' on' : '')} onClick={() => setType(null)}>Tot</button>
