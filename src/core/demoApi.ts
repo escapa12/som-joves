@@ -62,7 +62,7 @@ export class DemoApi implements Api {
     this.s = s ?? seed();
     // fill in faces provided at load time (demo build), without touching ones set in the app
     const avatars: Record<string, string> = (window as any).__DEMO_AVATARS ?? {};
-    for (const m of this.s.members) if (!m.avatar_data && avatars[m.nickname]) m.avatar_data = avatars[m.nickname];
+    for (const m of this.s.members) if (avatars[m.nickname]) m.avatar_data = avatars[m.nickname];
   }
   private save() {
     try { localStorage.setItem(KEY, JSON.stringify(this.s)); } catch { /* ignore */ }
