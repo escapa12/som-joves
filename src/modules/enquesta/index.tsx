@@ -41,25 +41,49 @@ function Author({ id }: { id: string | null }) {
   return <span class="row small-gap muted small"><Avatar m={m} size={22} /> Pregunta de <b>{m.nickname}</b></span>;
 }
 
-/** Bars per option, with the faces of who picked it. */
-function Results({ options, votes, counts, mine }: { options: string[]; votes?: EqResult[]; counts?: number[]; mine: number | null }) {
-  const t = tally(votes ?? [], counts);
+const COLORS = ['#ffcc33', '#5be3a8', '#6aa8ff', '#ff7eb6'];
+
+/** Pie (donut) with one slice per option; hover/tap a slice or a legend row to see who picked it. */
+function Results({ options, votes, mine }: { options: string[]; votes: EqResult[]; mine: number | null }) {
+  const t = tally(votes);
+  const [sel, setSel] = useState<number | null>(mine);
+  let acc = 0;
+  const shown = sel ?? -1;
   return (
-    <div class="stack tight">
-      {options.map((o, i) => (
-        <div class={'eq-res' + (mine === i ? ' mine' : '') + (t.winners.includes(i) && t.total ? ' win' : '')}>
-          <div class="eq-res-bar" style={{ width: `${t.pct[i]}%` }} />
-          <div class="row small-gap eq-res-row">
-            <b class="eq-letter">{LETTERS[i]}</b>
-            <span class="grow">{o}{mine === i && <span class="muted small"> · tu</span>}</span>
-            <b>{t.pct[i]}%</b>
-          </div>
-          {votes && t.by[i].length > 0 && (
-            <div class="eq-faces">{t.by[i].map((id) => <Avatar m={memberById(id)} size={24} />)}</div>
-          )}
+    <div class="stack eq-pie-wrap">
+      <div class="eq-pie" onMouseLeave={() => setSel(mine)}>
+        <svg viewBox="0 0 42 42" role="img" aria-label="Resultats">
+          <circle cx="21" cy="21" r="15.915" fill="none" stroke="var(--card2)" stroke-width="7" />
+          {t.total > 0 && t.counts.map((n, i) => {
+            const frac = (n * 100) / t.total;
+            const off = 25 - acc; acc += frac;
+            if (!n) return null;
+            return (
+              <circle cx="21" cy="21" r="15.915" fill="none" stroke={COLORS[i]} stroke-width={shown === i ? 9 : 7}
+                stroke-dasharray={`${frac} ${100 - frac}`} stroke-dashoffset={off} class={'eq-slice' + (shown >= 0 && shown !== i ? ' dim' : '')}
+                onMouseEnter={() => setSel(i)} onClick={() => setSel(i)} />
+            );
+          })}
+        </svg>
+        <div class="eq-pie-center">
+          {shown >= 0 ? <><b>{t.pct[shown]}%</b><span class="small muted eq-pie-label">{options[shown]}</span></> : <><b>{t.total}</b><span class="small muted">resp.</span></>}
         </div>
-      ))}
-      <p class="muted small" style={{ margin: 0 }}>{t.total} resposta{t.total === 1 ? '' : 'es'}</p>
+      </div>
+      <div class="stack tight">
+        {options.map((o, i) => (
+          <button type="button" class={'eq-leg' + (shown === i ? ' on' : '')} onMouseEnter={() => setSel(i)} onClick={() => setSel(i)}>
+            <span class="eq-dot" style={{ background: COLORS[i] }} />
+            <span class="grow">{o}{mine === i && <span class="muted small"> · tu</span>}{t.winners.includes(i) && ' 🏆'}</span>
+            <b>{t.pct[i]}%</b>
+          </button>
+        ))}
+      </div>
+      <div class="eq-who">
+        {shown < 0 ? <span class="muted small">Toca una opció per veure qui l'ha triat</span>
+          : t.by[shown].length === 0 ? <span class="muted small">Ningú ha triat «{options[shown]}»</span>
+          : <div class="row wrap small-gap">{t.by[shown].map((id) => <span class="row eq-voter"><Avatar m={memberById(id)} size={26} /><span class="small">{memberById(id)?.nickname ?? '?'}</span></span>)}</div>}
+      </div>
+      <p class="muted small" style={{ margin: 0 }}>{t.total} {t.total === 1 ? 'resposta' : 'respostes'}</p>
     </div>
   );
 }
