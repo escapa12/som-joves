@@ -192,7 +192,7 @@ export class DemoApi implements Api {
       const see = m.creator_id === this.s.me || !!p?.finished;
       const fin = this.nmPlays.filter((x) => x.match_id === m.id && x.finished);
       return { id: m.id, items: m.items, created_at: m.created_at, is_creator: m.creator_id === this.s.me,
-        creator_id: see ? m.creator_id : null, my_answers: p?.answers ?? null, my_finished: !!p?.finished, my_lost_at: p?.lost_at ?? null,
+        creator_id: m.creator_id, my_answers: p?.answers ?? null, my_finished: !!p?.finished, my_lost_at: p?.lost_at ?? null,
         creator_answers: see ? m.answers : null, players: fin.length, winners: fin.filter((x) => x.lost_at === null).length };
     }).sort((a, b) => b.created_at.localeCompare(a.created_at));
   }

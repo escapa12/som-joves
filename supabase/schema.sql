@@ -467,13 +467,13 @@ begin
   return query select v_same, s.answers[p_q + 1], v_same or p_q + 1 = n, (not v_same) and p_q + 1 = n;
 end $fn$;
 
--- My view of every match: role, progress, counts. Creator answers only when I'm the creator or I've finished.
+-- My view of every match: role, creator, progress, counts. Creator answers only when I'm the creator or I've finished.
 create or replace function nm_my_matches()
 returns table(match_id uuid, is_creator boolean, creator_id uuid, my_answers int[], my_finished boolean, my_lost_at int,
               creator_answers int[], players int, winners int)
 language sql stable security definer set search_path = public, extensions as $fn$
   select m.id, s.creator_id = current_member(),
-         case when s.creator_id = current_member() or coalesce(p.finished, false) then s.creator_id end,
+         s.creator_id,                       -- everyone sees who made the match
          p.answers, coalesce(p.finished, false), p.lost_at,
          case when s.creator_id = current_member() or coalesce(p.finished, false) then s.answers end,
          (select count(*)::int from nm_plays x where x.match_id = m.id and x.finished),

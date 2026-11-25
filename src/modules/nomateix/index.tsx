@@ -194,6 +194,7 @@ function Play({ id }: { id: string }) {
 
       {!m.is_creator && !finished && it && (
         <>
+          {creator && <p class="row center small-gap" style={{ margin: 0 }}><Avatar m={creator} size={32} /><span>Partida de <b>{creator.nickname}</b></span></p>}
           <div class="nm-dots">{m.items.map((_, i) => <span class={(i === q ? 'cur ' : '') + (i < q ? 'done' : '')} />)}</div>
           <div class="card stack nm-q">
             <div class="muted small">Pregunta {q + 1} de {m.items.length} · no diguis el mateix que l'altre!</div>
@@ -212,7 +213,7 @@ function Play({ id }: { id: string }) {
             <div class={'card center-text nm-final ' + (m.my_lost_at === null ? 'win' : 'lose')}>
               <div class="big">{m.my_lost_at === null ? '🎉' : '💥'}</div>
               <h2>{m.my_lost_at === null ? 'Has guanyat!' : `Has caigut a la pregunta ${m.my_lost_at + 1}`}</h2>
-              {creator && <p class="row center gap"><span>La partida era de</span><Avatar m={creator} size={32} /><b>{creator.nickname}</b></p>}
+              {creator && <p class="row center gap"><span>Partida de</span><Avatar m={creator} size={32} /><b>{creator.nickname}</b></p>}
             </div>
           )}
           <ResultsTable m={m} />
@@ -238,8 +239,9 @@ function List() {
   }, [matches]);
   const card = (m: NmMatch) => (
     <a class="card row" href={href('nomateix/' + m.id)}>
-      <span class="emoji">{m.is_creator ? '😈' : m.my_finished ? (m.my_lost_at === null ? '🎉' : '💥') : (m.my_answers?.length ? '⏳' : '🙊')}</span>
+      <span class="nm-by"><Avatar m={memberById(m.creator_id)} size={44} /><span class="nm-by-badge">{m.is_creator ? '😈' : m.my_finished ? (m.my_lost_at === null ? '🎉' : '💥') : (m.my_answers?.length ? '⏳' : '🙊')}</span></span>
       <div class="grow">
+        <div class="small"><b>{m.is_creator ? 'La teva partida' : `Partida de ${memberById(m.creator_id)?.nickname ?? '?'}`}</b></div>
         <strong>{m.items.slice(0, 2).map((it) => questionById(it.q)?.text).join(' · ')}…</strong>
         <div class="muted small">{new Date(m.created_at).toLocaleDateString('ca-ES')} · {m.players} jugades · {m.winners} guanyades
           {!m.is_creator && !m.my_finished && m.my_answers?.length ? ` · vas per la ${m.my_answers.length + 1}a` : ''}</div>

@@ -272,3 +272,6 @@ button, .btn, .chip, .pick, .seg, .topbar, .tier-label { -webkit-user-select: no
 .fs-spec-head .small { white-space: nowrap; }
 .fs-scale.spectrum button { background: color-mix(in srgb, var(--green) calc(var(--t) * 45%), color-mix(in srgb, var(--pink) calc((1 - var(--t)) * 45%), var(--card2))); }
 .fs-scale.spectrum button.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+.nm-by { position: relative; flex: none; display: inline-grid; }
+.nm-by-badge { position: absolute; right: -6px; bottom: -4px; font-size: 1.05rem; filter: drop-shadow(0 1px 2px #000a); }
