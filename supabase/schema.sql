@@ -516,3 +516,66 @@ begin
 end $fn$;
 
 grant execute on all functions in schema public to anon, authenticated;
+
+-- ───────────────────────── Fill de puta o Subnormal (fs_) ─────────────────────────
+-- Once per day (Europe/Madrid), each member rates every other member on one 0–10 scale:
+-- 10 = fill de puta, 0 = subnormal (sub = 10 − fdp). One vote per target per day, never yourself. Votes are public.
+-- A member's fdp % = average fdp received / 10; subnormal % = 100 − fdp %.
+create table if not exists fs_votes (
+  id uuid primary key default gen_random_uuid(),
+  day date not null default ((now() at time zone 'Europe/Madrid')::date),
+  voter_id uuid not null references members(id) on delete cascade,
+  target_id uuid not null references members(id) on delete cascade,
+  fdp smallint not null check (fdp between 0 and 10),
+  sub smallint not null check (sub between 0 and 10),
+  created_at timestamptz not null default now(),
+  unique (day, voter_id, target_id),
+  check (voter_id <> target_id)
+);
+create index if not exists fs_votes_target on fs_votes(target_id, day);
+alter table fs_votes enable row level security;
+drop policy if exists "fs_votes_read" on fs_votes;
+create policy "fs_votes_read" on fs_votes for select using (is_member());
+grant select on fs_votes to authenticated;
+revoke insert, update, delete on fs_votes from anon, authenticated;
+
+-- Cast today's votes: p_votes = [{"target": uuid, "fdp": 0..10}, ...] (sub is derived as 10 − fdp)
+create or replace function fs_vote(p_votes jsonb) returns int
+language plpgsql security definer set search_path = public, extensions as $fn$
+declare v_me uuid := current_member(); v_day date := (now() at time zone 'Europe/Madrid')::date; v jsonb; n int := 0;
+begin
+  if v_me is null or not is_member() then raise exception 'no_membre'; end if;
+  if jsonb_typeof(p_votes) <> 'array' or jsonb_array_length(p_votes) = 0 then raise exception 'vot_invalid'; end if;
+  for v in select * from jsonb_array_elements(p_votes) loop
+    if (v->>'target')::uuid = v_me then raise exception 'vot_a_tu_mateix'; end if;
+    if not exists(select 1 from members where id = (v->>'target')::uuid and active) then raise exception 'membre_desconegut'; end if;
+    if (v->>'fdp')::int not between 0 and 10 then raise exception 'vot_invalid'; end if;
+    if exists(select 1 from fs_votes where day = v_day and voter_id = v_me and target_id = (v->>'target')::uuid) then
+      raise exception 'ja_votat_avui';
+    end if;
+    insert into fs_votes(day, voter_id, target_id, fdp, sub)
+    values (v_day, v_me, (v->>'target')::uuid, (v->>'fdp')::int, 10 - (v->>'fdp')::int);
+    n := n + 1;
+  end loop;
+  return n;
+end $fn$;
+
+-- Ranking since p_from (null = always): average received points as %, and number of votes.
+create or replace function fs_ranking(p_from date default null)
+returns table(member_id uuid, fdp_pct numeric, sub_pct numeric, votes int)
+language sql stable security definer set search_path = public, extensions as $fn$
+  select m.id, round(avg(v.fdp) * 10, 1), round(avg(v.sub) * 10, 1), count(v.id)::int
+  from members m left join fs_votes v on v.target_id = m.id and (p_from is null or v.day >= p_from)
+  where is_member() and m.active
+  group by m.id
+$fn$;
+
+-- Admin can delete a vote (e.g. a mistake).
+create or replace function fs_delete(p_vote uuid) returns void
+language plpgsql security definer set search_path = public, extensions as $fn$
+begin
+  if not is_admin() then raise exception 'nomes_admin'; end if;
+  delete from fs_votes where id = p_vote;
+end $fn$;
+
+grant execute on function fs_vote(jsonb), fs_ranking(date), fs_delete(uuid) to authenticated;

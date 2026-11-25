@@ -1,6 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Api, MeetupDraft } from './api';
-import type { AppData, Attendance, Meetup, NmMatch, TierGame } from './types';
+import type { AppData, Attendance, FsVote, FsVoteDraft, FsVoteFilter, Meetup, NmMatch, TierGame } from './types';
 
 function ok<T>(r: { data: T; error: any }): T {
   if (r.error) throw r.error;
@@ -180,5 +180,26 @@ export class SupabaseApi implements Api {
   }
   async nmDelete(matchId: string) {
     ok(await this.sb.rpc('nm_delete', { p_match: matchId }));
+  }
+
+  async fsRanking(from: string | null) {
+    return (ok(await this.sb.rpc('fs_ranking', { p_from: from })) as any[]).map((r) => ({
+      member_id: r.member_id, votes: r.votes,
+      fdp_pct: r.fdp_pct === null ? null : Number(r.fdp_pct), sub_pct: r.sub_pct === null ? null : Number(r.sub_pct),
+    }));
+  }
+  async fsVotes(f: FsVoteFilter) {
+    let q = this.sb.from('fs_votes').select('*');
+    if (f.day) q = q.eq('day', f.day);
+    if (f.from) q = q.gte('day', f.from);
+    if (f.voter) q = q.eq('voter_id', f.voter);
+    if (f.target) q = q.eq('target_id', f.target);
+    return ok(await q.order('created_at', { ascending: false }).limit(f.limit ?? 500)) as FsVote[];
+  }
+  async fsVote(votes: FsVoteDraft[]) {
+    return ok(await this.sb.rpc('fs_vote', { p_votes: votes })) as number;
+  }
+  async fsDelete(voteId: string) {
+    ok(await this.sb.rpc('fs_delete', { p_vote: voteId }));
   }
 }

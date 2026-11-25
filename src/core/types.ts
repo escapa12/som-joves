@@ -135,3 +135,8 @@ export interface NmMatch {
 export interface NmAnswer { same: boolean; creator_option: number; done: boolean; won: boolean }
 export interface NmResult { member_id: string; answers: number[]; lost_at: number | null; finished: boolean }
 export interface NmScore { member_id: string; points: number; wins: number; played: number; trapped: number }
+
+export interface FsVote { id: string; day: string; voter_id: string; target_id: string; fdp: number; sub: number; created_at: string }
+export interface FsRank { member_id: string; fdp_pct: number | null; sub_pct: number | null; votes: number }
+export interface FsVoteDraft { target: string; fdp: number; sub: number }
+export interface FsVoteFilter { day?: string; voter?: string; target?: string; from?: string; limit?: number }

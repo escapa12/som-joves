@@ -10,6 +10,8 @@ export interface ModuleDef {
   id: string;            // url segment: #/<id>/...
   title: string;         // Catalan
   emoji: string;
+  /** Optional live icon for the home card (falls back to emoji). */
+  Icon?: ComponentType;
   description: string;   // Catalan, one line
   /** Receives the path segments after the module id. */
   Page: ComponentType<{ path: string[] }>;

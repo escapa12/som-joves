@@ -1,6 +1,7 @@
 import type {
   Adjustment, AppData, AuditEntry, Attendance, EventType, GuessResult, Kid, Meetup, Member,
   Placements, RosterEntry, TierGame, TierScore, NmMatch, NmAnswer, NmResult, NmScore,
+  FsRank, FsVote, FsVoteDraft, FsVoteFilter,
 } from './types';
 
 export type MeetupDraft = Omit<Meetup, 'id' | 'created_at' | 'created_by' | 'deleted_at' | 'attendance'> & { id?: string };
@@ -42,6 +43,12 @@ export interface Api {
   nmResults(matchId: string): Promise<NmResult[]>;
   nmLeaderboard(): Promise<NmScore[]>;
   nmDelete(matchId: string): Promise<void>;
+
+  // fill de puta o subnormal
+  fsRanking(from: string | null): Promise<FsRank[]>;
+  fsVotes(f: FsVoteFilter): Promise<FsVote[]>;
+  fsVote(votes: FsVoteDraft[]): Promise<number>;
+  fsDelete(voteId: string): Promise<void>;
 }
 
 const MSG: Record<string, string> = {
@@ -59,6 +66,9 @@ const MSG: Record<string, string> = {
   ordre_incorrecte: 'Respon les preguntes en ordre.',
   respostes_incompletes: 'Respon totes les preguntes.',
   joc_desconegut: 'Aquesta partida ja no existeix.',
+  ja_votat_avui: 'Avui ja has votat aquesta persona. Torna demà 😉',
+  vot_a_tu_mateix: 'No et pots votar a tu mateix 😅',
+  vot_invalid: 'Vot invàlid (0–10).',
 };
 
 export function humanError(e: unknown): string {

@@ -1,6 +1,6 @@
 // Demo backend: everything in this browser (localStorage). Used when no Supabase env is configured.
 import type { Api, MeetupDraft } from './api';
-import type { AppData, Attendance, AuditEntry, Member, NmMatch, TierGame } from './types';
+import type { AppData, Attendance, AuditEntry, FsVote, FsVoteDraft, FsVoteFilter, Member, NmMatch, TierGame } from './types';
 
 interface DemoState extends AppData {
   me: string | null;
@@ -9,6 +9,7 @@ interface DemoState extends AppData {
   tiers: { id: string; placements: any; candidates: string[]; created_at: string; creator_id: string; real_index: number }[];
   nm?: { id: string; items: NmMatch['items']; created_at: string; creator_id: string; answers: number[] }[];
   nmPlays?: { match_id: string; member_id: string; answers: number[]; lost_at: number | null; finished: boolean }[];
+  fs?: FsVote[];
   guesses: { game_id: string; member_id: string; category_index: number; creator_guess_id: string | null; correct_category: boolean; correct_creator: boolean }[];
 }
 
@@ -226,5 +227,33 @@ export class DemoApi implements Api {
   async nmDelete(matchId: string) {
     const m = this.nm.find((x) => x.id === matchId)!; this.need(this.isAdmin() || m.creator_id === this.s.me);
     this.s.nm = this.nm.filter((x) => x.id !== matchId); this.s.nmPlays = this.nmPlays.filter((x) => x.match_id !== matchId); this.save();
+  }
+
+  private get fs() { return (this.s.fs ??= []); }
+  async fsRanking(from: string | null) {
+    return this.s.members.filter((m) => m.active).map((m) => {
+      const v = this.fs.filter((x) => x.target_id === m.id && (!from || x.day >= from));
+      const avg = (k: 'fdp' | 'sub') => (v.length ? Math.round((v.reduce((a, x) => a + x[k], 0) / v.length) * 100) / 10 : null);
+      return { member_id: m.id, fdp_pct: avg('fdp'), sub_pct: avg('sub'), votes: v.length };
+    });
+  }
+  async fsVotes(f: FsVoteFilter) {
+    return this.fs.filter((x) => (!f.day || x.day === f.day) && (!f.from || x.day >= f.from) && (!f.voter || x.voter_id === f.voter) && (!f.target || x.target_id === f.target))
+      .sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, f.limit ?? 500);
+  }
+  async fsVote(votes: FsVoteDraft[]) {
+    const me = this.s.me; this.need(!!me, 'no_membre'); this.need(votes.length > 0, 'vot_invalid');
+    const day = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
+    for (const v of votes) {
+      this.need(v.target !== me, 'vot_a_tu_mateix');
+      this.need(!!this.s.members.find((m) => m.id === v.target && m.active), 'membre_desconegut');
+      this.need(Number.isInteger(v.fdp) && v.fdp >= 0 && v.fdp <= 10, 'vot_invalid');
+      this.need(!this.fs.some((x) => x.day === day && x.voter_id === me && x.target_id === v.target), 'ja_votat_avui');
+    }
+    for (const v of votes) this.fs.push({ id: uid(), day, voter_id: me!, target_id: v.target, fdp: v.fdp, sub: 10 - v.fdp, created_at: new Date().toISOString() });
+    this.save(); return votes.length;
+  }
+  async fsDelete(voteId: string) {
+    this.need(this.isAdmin(), 'nomes_admin'); this.s.fs = this.fs.filter((x) => x.id !== voteId); this.save();
   }
 }

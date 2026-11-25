@@ -229,3 +229,46 @@ button, .btn, .chip, .pick, .seg, .topbar, .tier-label { -webkit-user-select: no
 .nm-final.win { border-color: var(--green); }
 .nm-final.lose { border-color: var(--red); }
 .nm-same { background: #ff6b6b22; border-radius: 8px; }
+
+/* Fill de puta o Subnormal */
+.module-card:nth-child(4) { background: linear-gradient(135deg, #6b4a1f, #2d1d3d); border-color: #8a6430; }
+.fs-cta { background: linear-gradient(135deg, #ff5c8a, #b03a8c); color: #fff; }
+.fs-cta .chev, .fs-cta .small { color: #ffe3ee; }
+.fs-cta.done { background: var(--card); color: var(--text); }
+.fs-cta.done .small, .fs-cta.done .chev { color: var(--muted); }
+.fs-rank { color: inherit; text-decoration: none; padding: .2rem 0; }
+.fs-pct { min-width: 3.6rem; text-align: right; font-size: 1.05rem; }
+.fs-bar.fdp > div { background: var(--green); }
+.fs-bar.sub > div { background: var(--pink); }
+.fs-score { font-size: .82rem; font-weight: 700; background: var(--card2); border-radius: 99px; padding: .1rem .45rem; white-space: nowrap; }
+.fs-scale { display: grid; grid-template-columns: repeat(11, 1fr); gap: 3px; }
+.fs-scale button { border: 1px solid var(--line); background: var(--card2); border-radius: 8px; padding: .5rem 0; font-weight: 700; font-size: .85rem; cursor: pointer; min-width: 0; }
+.fs-scale.fdp .on { background: var(--green); border-color: var(--green); color: #062b1c; }
+.fs-scale.sub .on { background: var(--pink); border-color: var(--pink); color: #fff; }
+.fs-val { min-width: 1.5rem; text-align: center; }
+.fs-card.ready { border-color: var(--green); }
+.fs-del { width: 28px; height: 28px; font-size: 1rem; }
+.fs-stats > div { background: var(--card2); }
+.fab:disabled { opacity: .55; }
+.fs-icon { position: relative; display: inline-grid; place-items: center; flex: none; vertical-align: middle; }
+.fs-icon.emoji-only { line-height: 1; }
+.fs-icon .avatar { display: block; }
+.fs-icon-badge { position: absolute; right: -28%; bottom: -18%; line-height: 1; filter: drop-shadow(0 1px 2px #000a); }
+.fs-module-icon { display: inline-flex; gap: .55rem; padding-right: .4rem; }
+.fs-score { display: inline-flex; align-items: center; gap: .35rem; }
+.fs-grid .pick.on span { color: var(--text); }
+.fs-grid .pick.voted { opacity: .35; cursor: not-allowed; }
+.fs-grid .pick.voted:hover { opacity: .5; }
+.fs-face { position: relative; display: inline-block; }
+.fs-check { position: absolute; right: -4px; bottom: -2px; font-size: 1.1rem; }
+.fs-grid .pick .fs-mini { font-size: .7rem; color: var(--muted); }
+.fs-split { display: grid; grid-template-columns: auto 1fr auto; gap: .4rem; align-items: center; font-size: .8rem; }
+.fs-split-end { display: inline-flex; align-items: center; gap: .2rem; white-space: nowrap; min-width: 3.7rem; }
+.fs-split-end.r { justify-content: flex-end; }
+.fs-split-end span { font-size: 1.05rem; }
+.fs-split-bar { display: flex; height: 12px; border-radius: 99px; overflow: hidden; background: var(--card2); }
+.fs-split-bar .f { background: var(--green); }
+.fs-split-bar .s { background: var(--pink); }
+.fs-spec-head .small { white-space: nowrap; }
+.fs-scale.spectrum button { background: color-mix(in srgb, var(--green) calc(var(--t) * 45%), color-mix(in srgb, var(--pink) calc((1 - var(--t)) * 45%), var(--card2))); }
+.fs-scale.spectrum button.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }

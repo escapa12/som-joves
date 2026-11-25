@@ -26,7 +26,7 @@ export function Home() {
       <div class="modules">
         {modules.map((mod) => (
           <a class="module-card" href={href(mod.id)}>
-            <span class="emoji">{mod.emoji}</span>
+            <span class="emoji">{mod.Icon ? <mod.Icon /> : mod.emoji}</span>
             <div>
               <h2>{mod.title} {mod.useBadge && <Badge use={mod.useBadge} />}</h2>
               <p>{mod.description}</p>

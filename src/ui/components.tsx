@@ -64,7 +64,7 @@ export function useConfirm(): [(text: string, yes?: string) => Promise<boolean>,
   return [ask, el];
 }
 
-export function Segmented<T extends string>({ value, options, onChange }: { value: T; options: [T, string][]; onChange: (v: T) => void }) {
+export function Segmented<T extends string>({ value, options, onChange }: { value: T; options: [T, ComponentChildren][]; onChange: (v: T) => void }) {
   return (
     <div class="seg" role="tablist">
       {options.map(([v, l]) => (
