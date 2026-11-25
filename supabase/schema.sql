@@ -579,3 +579,11 @@ begin
 end $fn$;
 
 grant execute on function fs_vote(jsonb), fs_ranking(date), fs_delete(uuid) to authenticated;
+
+-- ============ Keepalive ============
+-- Pinged by .github/workflows/keepalive.yml every 3 days so the free-tier project doesn't pause.
+-- Harmless: reads nothing, returns 1.
+create or replace function keepalive() returns int
+language sql stable as $fn$ select 1 $fn$;
+
+grant execute on function keepalive() to anon, authenticated;
