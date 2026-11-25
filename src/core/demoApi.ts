@@ -1,12 +1,14 @@
 // Demo backend: everything in this browser (localStorage). Used when no Supabase env is configured.
 import type { Api, MeetupDraft } from './api';
-import type { AppData, Attendance, AuditEntry, Member, TierGame } from './types';
+import type { AppData, Attendance, AuditEntry, Member, NmMatch, TierGame } from './types';
 
 interface DemoState extends AppData {
   me: string | null;
   pins: Record<string, string>;
   audit: AuditEntry[];
   tiers: { id: string; placements: any; candidates: string[]; created_at: string; creator_id: string; real_index: number }[];
+  nm?: { id: string; items: NmMatch['items']; created_at: string; creator_id: string; answers: number[] }[];
+  nmPlays?: { match_id: string; member_id: string; answers: number[]; lost_at: number | null; finished: boolean }[];
   guesses: { game_id: string; member_id: string; category_index: number; creator_guess_id: string | null; correct_category: boolean; correct_creator: boolean }[];
 }
 
@@ -177,5 +179,50 @@ export class DemoApi implements Api {
     const t = this.s.tiers.find((x) => x.id === gameId)!;
     this.need(this.isAdmin() || t.creator_id === this.s.me);
     this.s.tiers = this.s.tiers.filter((x) => x.id !== gameId); this.s.guesses = this.s.guesses.filter((g) => g.game_id !== gameId); this.save();
+  }
+
+  private get nm() { return (this.s.nm ??= []); }
+  private get nmPlays() { return (this.s.nmPlays ??= []); }
+  async nmMatches(): Promise<NmMatch[]> {
+    return this.nm.map((m) => {
+      const p = this.nmPlays.find((x) => x.match_id === m.id && x.member_id === this.s.me);
+      const see = m.creator_id === this.s.me || !!p?.finished;
+      const fin = this.nmPlays.filter((x) => x.match_id === m.id && x.finished);
+      return { id: m.id, items: m.items, created_at: m.created_at, is_creator: m.creator_id === this.s.me,
+        creator_id: see ? m.creator_id : null, my_answers: p?.answers ?? null, my_finished: !!p?.finished, my_lost_at: p?.lost_at ?? null,
+        creator_answers: see ? m.answers : null, players: fin.length, winners: fin.filter((x) => x.lost_at === null).length };
+    }).sort((a, b) => b.created_at.localeCompare(a.created_at));
+  }
+  async nmCreate(items: NmMatch['items'], answers: number[]) {
+    this.need(answers.length === items.length, 'respostes_incompletes');
+    const id = uid(); this.nm.push({ id, items, answers, creator_id: this.s.me!, created_at: new Date().toISOString() }); this.save(); return id;
+  }
+  async nmAnswer(matchId: string, q: number, option: number) {
+    const m = this.nm.find((x) => x.id === matchId); this.need(!!m, 'joc_desconegut');
+    this.need(m!.creator_id !== this.s.me, 'ets_el_creador');
+    let p = this.nmPlays.find((x) => x.match_id === matchId && x.member_id === this.s.me);
+    if (!p) { p = { match_id: matchId, member_id: this.s.me!, answers: [], lost_at: null, finished: false }; this.nmPlays.push(p); }
+    this.need(!p.finished, 'ja_has_votat'); this.need(q === p.answers.length, 'ordre_incorrecte');
+    const same = m!.answers[q] === option, last = q + 1 === m!.answers.length;
+    p.answers.push(option); if (same) p.lost_at = q; p.finished = same || last; this.save();
+    return { same, creator_option: m!.answers[q], done: p.finished, won: !same && last };
+  }
+  async nmResults(matchId: string) {
+    const m = this.nm.find((x) => x.id === matchId)!;
+    const me = this.nmPlays.find((x) => x.match_id === matchId && x.member_id === this.s.me);
+    if (!(m.creator_id === this.s.me || me?.finished)) return [];
+    return this.nmPlays.filter((x) => x.match_id === matchId && x.finished);
+  }
+  async nmLeaderboard() {
+    return this.s.members.filter((m) => m.active).map((m) => {
+      const pl = this.nmPlays.filter((x) => x.member_id === m.id && x.finished);
+      const wins = pl.filter((x) => x.lost_at === null).length;
+      const trapped = this.nmPlays.filter((x) => x.finished && x.lost_at !== null && this.nm.find((n) => n.id === x.match_id)?.creator_id === m.id).length;
+      return { member_id: m.id, points: wins * 3 + trapped, wins, played: pl.length, trapped };
+    });
+  }
+  async nmDelete(matchId: string) {
+    const m = this.nm.find((x) => x.id === matchId)!; this.need(this.isAdmin() || m.creator_id === this.s.me);
+    this.s.nm = this.nm.filter((x) => x.id !== matchId); this.s.nmPlays = this.nmPlays.filter((x) => x.match_id !== matchId); this.save();
   }
 }

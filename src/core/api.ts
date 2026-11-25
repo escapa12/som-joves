@@ -1,6 +1,6 @@
 import type {
   Adjustment, AppData, AuditEntry, Attendance, EventType, GuessResult, Kid, Meetup, Member,
-  Placements, RosterEntry, TierGame, TierScore,
+  Placements, RosterEntry, TierGame, TierScore, NmMatch, NmAnswer, NmResult, NmScore,
 } from './types';
 
 export type MeetupDraft = Omit<Meetup, 'id' | 'created_at' | 'created_by' | 'deleted_at' | 'attendance'> & { id?: string };
@@ -34,6 +34,14 @@ export interface Api {
   tierGuess(gameId: string, category: number, creatorId: string | null): Promise<GuessResult>;
   tierLeaderboard(): Promise<TierScore[]>;
   tierDelete(gameId: string): Promise<void>;
+
+  // no diguis el mateix
+  nmMatches(): Promise<NmMatch[]>;
+  nmCreate(items: NmMatch['items'], answers: number[]): Promise<string>;
+  nmAnswer(matchId: string, q: number, option: number): Promise<NmAnswer>;
+  nmResults(matchId: string): Promise<NmResult[]>;
+  nmLeaderboard(): Promise<NmScore[]>;
+  nmDelete(matchId: string): Promise<void>;
 }
 
 const MSG: Record<string, string> = {
@@ -43,10 +51,13 @@ const MSG: Record<string, string> = {
   membre_desconegut: 'Aquest membre no existeix.',
   nomes_admin: 'Només l\'admin pot fer això.',
   ets_el_creador: 'No pots endevinar la teva pròpia llista 😅',
-  ja_has_votat: 'Ja has votat aquesta llista.',
+  ja_has_votat: 'Ja hi has jugat.',
   cal_3_a_5_categories: 'Calen entre 3 i 5 categories.',
   no_membre: 'Primer has d\'entrar al grup.',
   no_permis: 'No tens permís per fer això.',
+  ordre_incorrecte: 'Respon les preguntes en ordre.',
+  respostes_incompletes: 'Respon totes les preguntes.',
+  joc_desconegut: 'Aquesta partida ja no existeix.',
 };
 
 export function humanError(e: unknown): string {

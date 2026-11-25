@@ -371,3 +371,117 @@ select * from (values
   ('Pla de cap de setmana', '🏕️', '{"kind":"fixed","points":10}'::jsonb, 6)
 ) v(name, emoji, rule, sort_order)
 where not exists (select 1 from att_event_types);
+
+-- ───────────────────────── No diguis el mateix (nm_) ─────────────────────────
+-- A creator answers 5 random questions (4 options each). Each other member then answers the same
+-- questions one by one; the moment they pick the same option as the creator, they lose.
+create table if not exists nm_matches (
+  id uuid primary key default gen_random_uuid(),
+  items jsonb not null,               -- [{"q":"q07","options":["a","b","c","d"]}, ...] (member ids for face questions)
+  created_at timestamptz not null default now()
+);
+create table if not exists nm_secrets (
+  match_id uuid primary key references nm_matches(id) on delete cascade,
+  creator_id uuid not null references members(id),
+  answers int[] not null
+);
+create table if not exists nm_plays (
+  match_id uuid not null references nm_matches(id) on delete cascade,
+  member_id uuid not null references members(id) on delete cascade,
+  answers int[] not null default '{}',
+  lost_at int,                        -- question index where they matched the creator
+  finished boolean not null default false,
+  at timestamptz not null default now(),
+  primary key (match_id, member_id)
+);
+alter table nm_matches enable row level security;
+alter table nm_secrets enable row level security;
+alter table nm_plays enable row level security;
+drop policy if exists "nm_matches_read" on nm_matches;
+create policy "nm_matches_read" on nm_matches for select using (is_member());
+grant select, insert, update, delete on nm_matches, nm_secrets, nm_plays to authenticated;
+revoke all on nm_secrets, nm_plays from anon, authenticated;
+
+create or replace function nm_create(p_items jsonb, p_answers int[]) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare v_me uuid := current_member(); v_id uuid; n int := jsonb_array_length(p_items);
+begin
+  if v_me is null then raise exception 'no_membre'; end if;
+  if n < 1 or n > 10 or array_length(p_answers, 1) is distinct from n then raise exception 'respostes_incompletes'; end if;
+  insert into nm_matches(items) values (p_items) returning id into v_id;
+  insert into nm_secrets(match_id, creator_id, answers) values (v_id, v_me, p_answers);
+  return v_id;
+end $$;
+
+-- Answer the next question. Returns whether it matched the creator (=> lost) and the creator's pick.
+create or replace function nm_answer(p_match uuid, p_q int, p_option int)
+returns table(same boolean, creator_option int, done boolean, won boolean)
+language plpgsql security definer set search_path = public as $$
+declare v_me uuid := current_member(); s nm_secrets; p nm_plays; n int; v_same boolean;
+begin
+  if v_me is null then raise exception 'no_membre'; end if;
+  select * into s from nm_secrets where match_id = p_match;
+  if not found then raise exception 'joc_desconegut'; end if;
+  if s.creator_id = v_me then raise exception 'ets_el_creador'; end if;
+  n := array_length(s.answers, 1);
+  insert into nm_plays(match_id, member_id) values (p_match, v_me) on conflict do nothing;
+  select * into p from nm_plays where match_id = p_match and member_id = v_me for update;
+  if p.finished then raise exception 'ja_has_votat'; end if;
+  if p_q <> coalesce(array_length(p.answers, 1), 0) then raise exception 'ordre_incorrecte'; end if;
+  v_same := s.answers[p_q + 1] = p_option;
+  update nm_plays set answers = answers || p_option,
+         lost_at = case when v_same then p_q end,
+         finished = v_same or p_q + 1 = n, at = now()
+   where match_id = p_match and member_id = v_me;
+  return query select v_same, s.answers[p_q + 1], v_same or p_q + 1 = n, (not v_same) and p_q + 1 = n;
+end $$;
+
+-- My view of every match: role, progress, counts. Creator answers only when I'm the creator or I've finished.
+create or replace function nm_my_matches()
+returns table(match_id uuid, is_creator boolean, creator_id uuid, my_answers int[], my_finished boolean, my_lost_at int,
+              creator_answers int[], players int, winners int)
+language sql stable security definer set search_path = public as $$
+  select m.id, s.creator_id = current_member(),
+         case when s.creator_id = current_member() or coalesce(p.finished, false) then s.creator_id end,
+         p.answers, coalesce(p.finished, false), p.lost_at,
+         case when s.creator_id = current_member() or coalesce(p.finished, false) then s.answers end,
+         (select count(*)::int from nm_plays x where x.match_id = m.id and x.finished),
+         (select count(*)::int from nm_plays x where x.match_id = m.id and x.finished and x.lost_at is null)
+  from nm_matches m join nm_secrets s on s.match_id = m.id
+  left join nm_plays p on p.match_id = m.id and p.member_id = current_member()
+  where is_member()
+$$;
+
+-- Everyone's results for a match, only once I'm allowed to see the answers.
+create or replace function nm_results(p_match uuid)
+returns table(member_id uuid, answers int[], lost_at int, finished boolean)
+language sql stable security definer set search_path = public as $$
+  select p.member_id, p.answers, p.lost_at, p.finished from nm_plays p
+  where p.match_id = p_match and p.finished and is_member()
+    and exists(select 1 from nm_secrets s left join nm_plays me on me.match_id = s.match_id and me.member_id = current_member()
+               where s.match_id = p_match and (s.creator_id = current_member() or coalesce(me.finished, false)))
+$$;
+
+-- Leaderboard: +3 per win as player; creator +1 for every player who fell in their trap.
+create or replace function nm_leaderboard()
+returns table(member_id uuid, points int, wins int, played int, trapped int)
+language sql stable security definer set search_path = public as $$
+  with pl as (select member_id, count(*) filter (where lost_at is null)::int wins, count(*)::int played
+              from nm_plays where finished group by member_id),
+       cr as (select s.creator_id member_id, count(p.*) filter (where p.lost_at is not null)::int trapped
+              from nm_secrets s join nm_plays p on p.match_id = s.match_id and p.finished group by s.creator_id)
+  select m.id, coalesce(pl.wins,0)*3 + coalesce(cr.trapped,0), coalesce(pl.wins,0), coalesce(pl.played,0), coalesce(cr.trapped,0)
+  from members m left join pl on pl.member_id = m.id left join cr on cr.member_id = m.id
+  where is_member() and m.active
+$$;
+
+create or replace function nm_delete(p_match uuid) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not (is_admin() or exists(select 1 from nm_secrets where match_id = p_match and creator_id = current_member())) then
+    raise exception 'no_permis';
+  end if;
+  delete from nm_matches where id = p_match;
+end $$;
+
+grant execute on all functions in schema public to anon, authenticated;

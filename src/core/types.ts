@@ -118,3 +118,20 @@ export interface AppData {
   meetups: Meetup[];
   adjustments: Adjustment[];
 }
+
+export interface NmMatch {
+  id: string;
+  items: { q: string; options: string[] }[];
+  created_at: string;
+  is_creator: boolean;
+  creator_id: string | null;      // only when I'm creator or finished
+  my_answers: number[] | null;
+  my_finished: boolean;
+  my_lost_at: number | null;
+  creator_answers: number[] | null; // only when I'm creator or finished
+  players: number;
+  winners: number;
+}
+export interface NmAnswer { same: boolean; creator_option: number; done: boolean; won: boolean }
+export interface NmResult { member_id: string; answers: number[]; lost_at: number | null; finished: boolean }
+export interface NmScore { member_id: string; points: number; wins: number; played: number; trapped: number }

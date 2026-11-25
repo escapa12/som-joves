@@ -205,3 +205,27 @@ button, .btn, .chip, .pick, .seg, .topbar, .tier-label { -webkit-user-select: no
   .avatar-grid { grid-template-columns: repeat(auto-fill, minmax(66px, 1fr)); }
   .fab { padding: .9rem 1.3rem; }
 }
+
+/* No diguis el mateix */
+.module-card:nth-child(3) { background: linear-gradient(135deg, #1f5a52, #1d2a3d); border-color: #2f7a6d; }
+.nm-q h2 { font-size: 1.35rem; }
+.nm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.nm-grid .option { min-height: 4.2rem; text-align: center; display: grid; place-items: center; }
+.nm-faces { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.nm-face { background: var(--card2); border: 2px solid var(--line); border-radius: 16px; padding: .7rem .3rem; display: flex; flex-direction: column; align-items: center; gap: .3rem; cursor: pointer; font-weight: 600; }
+.nm-face.on, .option.on { border-color: var(--accent); background: #ffcc3322; }
+.nm-face:disabled, .option:disabled { cursor: default; }
+.nm-dots { display: flex; gap: .4rem; justify-content: center; }
+.nm-dots > * { width: 12px; height: 12px; border-radius: 99px; background: var(--card2); border: 0; padding: 0; }
+.nm-dots .done { background: var(--green); }
+.nm-dots .cur { background: var(--accent); width: 28px; }
+.nm-flash { position: fixed; left: 50%; bottom: calc(1.5rem + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--green); color: #062b1c; padding: .8rem 1.1rem; border-radius: 14px; font-weight: 600; z-index: 60; width: max-content; max-width: 92vw; animation: drop .2s; }
+.nm-flash .avatar { width: 24px !important; height: 24px !important; }
+.nm-pop { text-align: center; }
+.nm-pop .big, .nm-final .big { font-size: 3.5rem; }
+.nm-pop.lose { box-shadow: 0 0 0 3px var(--red); animation: shake .45s; }
+.nm-pop.win { box-shadow: 0 0 0 3px var(--green); }
+@keyframes shake { 20%, 60% { transform: translateX(-10px); } 40%, 80% { transform: translateX(10px); } }
+.nm-final.win { border-color: var(--green); }
+.nm-final.lose { border-color: var(--red); }
+.nm-same { background: #ff6b6b22; border-radius: 8px; }

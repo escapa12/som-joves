@@ -1,6 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Api, MeetupDraft } from './api';
-import type { AppData, Attendance, Meetup, TierGame } from './types';
+import type { AppData, Attendance, Meetup, NmMatch, TierGame } from './types';
 
 function ok<T>(r: { data: T; error: any }): T {
   if (r.error) throw r.error;
@@ -147,5 +147,34 @@ export class SupabaseApi implements Api {
   }
   async tierDelete(gameId: string) {
     ok(await this.sb.rpc('tier_delete', { p_game: gameId }));
+  }
+
+  async nmMatches(): Promise<NmMatch[]> {
+    const [matches, status] = await Promise.all([
+      this.sb.from('nm_matches').select('*').order('created_at', { ascending: false }),
+      this.sb.rpc('nm_my_matches'),
+    ]);
+    const st = new Map((ok(status) as any[]).map((s) => [s.match_id, s]));
+    return (ok(matches) as any[]).map((m) => {
+      const s: any = st.get(m.id) ?? {};
+      return { ...m, is_creator: !!s.is_creator, creator_id: s.creator_id ?? null, my_answers: s.my_answers ?? null,
+        my_finished: !!s.my_finished, my_lost_at: s.my_lost_at ?? null, creator_answers: s.creator_answers ?? null,
+        players: s.players ?? 0, winners: s.winners ?? 0 };
+    });
+  }
+  async nmCreate(items: any, answers: number[]) {
+    return ok(await this.sb.rpc('nm_create', { p_items: items, p_answers: answers })) as string;
+  }
+  async nmAnswer(matchId: string, q: number, option: number) {
+    return (ok(await this.sb.rpc('nm_answer', { p_match: matchId, p_q: q, p_option: option })) as any[])[0];
+  }
+  async nmResults(matchId: string) {
+    return ok(await this.sb.rpc('nm_results', { p_match: matchId })) as any;
+  }
+  async nmLeaderboard() {
+    return ok(await this.sb.rpc('nm_leaderboard')) as any;
+  }
+  async nmDelete(matchId: string) {
+    ok(await this.sb.rpc('nm_delete', { p_match: matchId }));
   }
 }
