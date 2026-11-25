@@ -19,7 +19,7 @@ const today = (d = 0) => new Date(Date.now() - d * 864e5).toISOString().slice(0,
 function seed(): DemoState {
   const names: [string, string][] = [
     ['Escarpa', 'ArnauE'], ['Markina', 'ArnauM'], ['Pere3', 'Pere'], ['KarbonEnergy', 'Oriol'], ['Fletxa Bava', 'Pau'],
-    ['DjNovita', 'Pol'], ['Granate', 'Marc'], ['Aniol', 'Aniol'], ['MonkiBusiness', 'Sergi'], ['WillyBux', 'Guillem'], ['Roc', 'Roc'],
+    ['DjNovita', 'Pol'], ['Granate', 'Marc'], ['Aniol', 'Aniol'], ['MonkiBusiness', 'Sergi'], ['WillyBux', 'Guillem'],
   ];
   const avatars: Record<string, string> = (window as any).__DEMO_AVATARS ?? {};
   const members: Member[] = names.map(([n, r], i) => ({
@@ -62,6 +62,8 @@ export class DemoApi implements Api {
     let s: DemoState | null = null;
     try { s = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { /* ignore */ }
     this.s = s ?? seed();
+    // members removed from the roster (demo only)
+    this.s.members = this.s.members.filter((m) => m.nickname !== 'Roc');
     // add members introduced after this browser's demo data was created
     for (const m of seed().members) if (!this.s.members.some((x) => x.nickname === m.nickname)) this.s.members.push({ ...m, id: 'm' + this.s.members.length, sort_order: this.s.members.length });
     // fill in faces provided at load time (demo build), without touching ones set in the app

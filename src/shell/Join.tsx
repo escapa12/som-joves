@@ -18,11 +18,18 @@ export function Join() {
   const [pin, setPin] = useState('');
   const [pin2, setPin2] = useState('');
   const [busy, setBusy] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     if (!code && !api.demo) return;
-    api.roster(code).then(setRoster).catch((e) => { toast(humanError(e), 'err'); setCode(''); try { localStorage.removeItem(CODE_KEY); } catch {} });
-  }, [code]);
+    setFailed(false);
+    api.roster(code).then(setRoster).catch((e) => {
+      toast(humanError(e), 'err'); setFailed(true);
+      // only forget the code if it is wrong (not on a network hiccup)
+      if (String((e as any)?.message ?? e).includes('codi_incorrecte')) { setCode(''); try { localStorage.removeItem(CODE_KEY); } catch {} }
+    });
+  }, [code, attempt]);
 
   const submit = async (e: Event) => {
     e.preventDefault();
@@ -52,6 +59,13 @@ export function Join() {
           <input value={input} onInput={(e) => setInput(e.currentTarget.value)} placeholder="El trobaràs al grup de WhatsApp" autoFocus />
           <button class="btn primary" disabled={!input.trim()}>Entrar</button>
         </form>
+      )}
+
+      {code && !roster && failed && (
+        <div class="card stack center-text">
+          <p>No s'ha pogut connectar.</p>
+          <button class="btn primary" onClick={() => setAttempt(attempt + 1)}>Torna-ho a provar</button>
+        </div>
       )}
 
       {roster && !who && (

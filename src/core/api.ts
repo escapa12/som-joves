@@ -47,6 +47,7 @@ export interface Api {
 const MSG: Record<string, string> = {
   codi_incorrecte: 'Codi del grup incorrecte.',
   pin_incorrecte: 'PIN incorrecte.',
+  massa_intents: 'Massa intents. Espera 15 minuts o demana a l\'admin que et reiniciï el PIN.',
   pin_invalid: 'El PIN ha de tenir 4 xifres.',
   membre_desconegut: 'Aquest membre no existeix.',
   nomes_admin: 'Només l\'admin pot fer això.',

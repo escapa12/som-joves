@@ -26,11 +26,15 @@ export class SupabaseApi implements Api {
   }
   async roster(code: string) {
     await this.ensureAuth();
-    return ok(await this.sb.rpc('roster_for_code', { p_code: code })) as any;
+    const r = ok(await this.sb.rpc('roster_for_code', { p_code: code })) as any[];
+    if (!r.length) throw new Error('codi_incorrecte');
+    return r as any;
   }
   async join(code: string, memberId: string, pin: string) {
     await this.ensureAuth();
-    return ok(await this.sb.rpc('join_group', { p_code: code, p_member: memberId, p_pin: pin })) as string;
+    const id = ok(await this.sb.rpc('join_group', { p_code: code, p_member: memberId, p_pin: pin })) as string | null;
+    if (!id) throw new Error('pin_incorrecte');
+    return id;
   }
   async leave() {
     ok(await this.sb.rpc('leave_group'));
