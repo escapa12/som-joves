@@ -1,6 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Api, MeetupDraft } from './api';
-import type { AppData, Attendance, FsVote, FsVoteDraft, FsVoteFilter, Meetup, NmMatch, TierGame } from './types';
+import type { AppData, Attendance, EqDay, EqQueued, EqResult, EqState, PushSub, FsVote, FsVoteDraft, FsVoteFilter, Meetup, NmMatch, TierGame } from './types';
 
 function ok<T>(r: { data: T; error: any }): T {
   if (r.error) throw r.error;
@@ -201,5 +201,33 @@ export class SupabaseApi implements Api {
   }
   async fsDelete(voteId: string) {
     ok(await this.sb.rpc('fs_delete', { p_vote: voteId }));
+  }
+
+  async eqState() {
+    return ok(await this.sb.rpc('eq_state')) as EqState;
+  }
+  async eqVote(option: number) {
+    ok(await this.sb.rpc('eq_vote', { p_option: option }));
+  }
+  async eqResults(day: string) {
+    return ok(await this.sb.rpc('eq_results', { p_day: day })) as EqResult[];
+  }
+  async eqHistory(limit: number) {
+    return ok(await this.sb.rpc('eq_history', { p_limit: limit })) as EqDay[];
+  }
+  async eqQueue() {
+    return ok(await this.sb.rpc('eq_queue_list')) as EqQueued[];
+  }
+  async eqAdd(question: string, options: string[]) {
+    return ok(await this.sb.rpc('eq_add', { p_question: question, p_options: options })) as string;
+  }
+  async eqDelete(id: string) {
+    ok(await this.sb.rpc('eq_delete', { p_id: id }));
+  }
+  async pushSubscribe(s: PushSub) {
+    ok(await this.sb.rpc('push_subscribe', { p_endpoint: s.endpoint, p_p256dh: s.p256dh, p_auth: s.auth }));
+  }
+  async pushUnsubscribe(endpoint: string) {
+    ok(await this.sb.rpc('push_unsubscribe', { p_endpoint: endpoint }));
   }
 }

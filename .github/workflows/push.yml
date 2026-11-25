@@ -1,0 +1,39 @@
+name: Push enquesta del dia
+# 9:00 and 20:00 Europe/Madrid. Cron is UTC, so we run at :50 for both CET and CEST hours;
+# the script waits for the exact hour and the server ignores repeats.
+on:
+  schedule:
+    - cron: '50 6,7,17,18 * * *'
+  workflow_dispatch:
+    inputs:
+      slot:
+        description: 'auto (segons l''hora), mati, vespre o prova (no compta com enviat)'
+        default: prova
+        type: choice
+        options: [prova, auto, mati, vespre]
+permissions:
+  contents: read
+  actions: write # to re-enable this workflow (GitHub disables schedules after 60 days without commits)
+concurrency: { group: push, cancel-in-progress: false }
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Send notifications
+        env:
+          SLOT: ${{ inputs.slot || 'auto' }}
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          PUSH_TOKEN: ${{ secrets.PUSH_TOKEN }}
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+        run: node scripts/push.mjs
+      - name: Keep this schedule enabled
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/push.yml/enable"

@@ -1,7 +1,7 @@
 import type {
   Adjustment, AppData, AuditEntry, Attendance, EventType, GuessResult, Kid, Meetup, Member,
   Placements, RosterEntry, TierGame, TierScore, NmMatch, NmAnswer, NmResult, NmScore,
-  FsRank, FsVote, FsVoteDraft, FsVoteFilter,
+  FsRank, FsVote, FsVoteDraft, FsVoteFilter, EqState, EqResult, EqDay, EqQueued, PushSub,
 } from './types';
 
 export type MeetupDraft = Omit<Meetup, 'id' | 'created_at' | 'created_by' | 'deleted_at' | 'attendance'> & { id?: string };
@@ -49,6 +49,19 @@ export interface Api {
   fsVotes(f: FsVoteFilter): Promise<FsVote[]>;
   fsVote(votes: FsVoteDraft[]): Promise<number>;
   fsDelete(voteId: string): Promise<void>;
+
+  // enquesta del dia
+  eqState(): Promise<EqState>;
+  eqVote(option: number): Promise<void>;
+  eqResults(day: string): Promise<EqResult[]>;
+  eqHistory(limit: number): Promise<EqDay[]>;
+  eqQueue(): Promise<EqQueued[]>;
+  eqAdd(question: string, options: string[]): Promise<string>;
+  eqDelete(id: string): Promise<void>;
+
+  // push notifications (this device)
+  pushSubscribe(sub: PushSub): Promise<void>;
+  pushUnsubscribe(endpoint: string): Promise<void>;
 }
 
 const MSG: Record<string, string> = {
@@ -69,6 +82,12 @@ const MSG: Record<string, string> = {
   ja_votat_avui: 'Avui ja has votat aquesta persona. Torna demà 😉',
   vot_a_tu_mateix: 'No et pots votar a tu mateix 😅',
   vot_invalid: 'Vot invàlid (0–10).',
+  ja_respost_avui: 'Ja has respost l\'enquesta d\'avui. Torna demà!',
+  pregunta_invalida: 'La pregunta necessita text i 4 opcions diferents.',
+  massa_preguntes: 'Ja tens 10 preguntes a la cua. Espera que en surtin algunes 😉',
+  permis_denegat: 'Has bloquejat les notificacions. Activa-les a la configuració del navegador.',
+  permis_no_donat: 'No has donat permís per a les notificacions.',
+  subscripcio_invalida: 'No s\'han pogut activar les notificacions.',
 };
 
 export function humanError(e: unknown): string {

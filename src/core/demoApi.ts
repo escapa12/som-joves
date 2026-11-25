@@ -1,6 +1,7 @@
 // Demo backend: everything in this browser (localStorage). Used when no Supabase env is configured.
 import type { Api, MeetupDraft } from './api';
-import type { AppData, Attendance, AuditEntry, FsVote, FsVoteDraft, FsVoteFilter, Member, NmMatch, TierGame } from './types';
+import { BANK } from '../modules/enquesta/bank';
+import type { AppData, Attendance, AuditEntry, EqDay, EqQueued, EqState, PushSub, FsVote, FsVoteDraft, FsVoteFilter, Member, NmMatch, TierGame } from './types';
 
 interface DemoState extends AppData {
   me: string | null;
@@ -10,6 +11,10 @@ interface DemoState extends AppData {
   nm?: { id: string; items: NmMatch['items']; created_at: string; creator_id: string; answers: number[] }[];
   nmPlays?: { match_id: string; member_id: string; answers: number[]; lost_at: number | null; finished: boolean }[];
   fs?: FsVote[];
+  eqQueue?: { id: string; author_id: string; question: string; options: string[]; created_at: string; used_on: string | null }[];
+  eqDays?: { day: string; question: string; options: string[]; author_id: string | null; bank_id: number | null }[];
+  eqVotes?: { day: string; member_id: string; option: number; created_at: string }[];
+  push?: (PushSub & { member_id: string })[];
   guesses: { game_id: string; member_id: string; category_index: number; creator_guess_id: string | null; correct_category: boolean; correct_creator: boolean }[];
 }
 
@@ -255,5 +260,74 @@ export class DemoApi implements Api {
   }
   async fsDelete(voteId: string) {
     this.need(this.isAdmin(), 'nomes_admin'); this.s.fs = this.fs.filter((x) => x.id !== voteId); this.save();
+  }
+
+  // ── enquesta del dia (same rules as the SQL functions) ──
+  private get eqQ() { return (this.s.eqQueue ??= []); }
+  private get eqD() { return (this.s.eqDays ??= []); }
+  private get eqV() { return (this.s.eqVotes ??= []); }
+  private madrid() { return new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' }); }
+  private eqEnsure(day: string) {
+    let d = this.eqD.find((x) => x.day === day);
+    if (d) return d;
+    const q = this.eqQ.filter((x) => !x.used_on).sort((a, b) => a.created_at.localeCompare(b.created_at))[0];
+    if (q) { q.used_on = day; d = { day, question: q.question, options: q.options, author_id: q.author_id, bank_id: null }; }
+    else {
+      const last = (id: number) => this.eqD.filter((x) => x.bank_id === id).map((x) => x.day).sort().pop() ?? '';
+      const b = [...BANK].sort((a, c) => last(a.id).localeCompare(last(c.id)) || Math.random() - 0.5)[0];
+      d = { day, question: b.q, options: [...b.options], author_id: null, bank_id: b.id };
+    }
+    this.eqD.push(d); this.save(); return d;
+  }
+  async eqState(): Promise<EqState> {
+    this.need(!!this.s.me, 'no_membre');
+    const day = this.madrid(), d = this.eqEnsure(day);
+    return { day, question: d.question, options: d.options, author_id: d.author_id,
+      my_vote: this.eqV.find((v) => v.day === day && v.member_id === this.s.me)?.option ?? null,
+      answers: this.eqV.filter((v) => v.day === day).length, pending: this.eqQ.filter((x) => !x.used_on).length };
+  }
+  async eqVote(option: number) {
+    this.need(!!this.s.me, 'no_membre'); this.need(Number.isInteger(option) && option >= 0 && option <= 3, 'vot_invalid');
+    const day = this.madrid(); this.eqEnsure(day);
+    this.need(!this.eqV.some((v) => v.day === day && v.member_id === this.s.me), 'ja_respost_avui');
+    this.eqV.push({ day, member_id: this.s.me!, option, created_at: new Date().toISOString() }); this.save();
+  }
+  async eqResults(day: string) {
+    const mine = this.eqV.some((v) => v.day === day && v.member_id === this.s.me);
+    if (!(day < this.madrid() || mine)) return [];
+    return this.eqV.filter((v) => v.day === day).map((v) => ({ member_id: v.member_id, option: v.option }));
+  }
+  async eqHistory(limit: number): Promise<EqDay[]> {
+    const today = this.madrid();
+    return this.eqD.filter((d) => d.day < today).sort((a, b) => b.day.localeCompare(a.day)).slice(0, limit).map((d) => ({
+      day: d.day, question: d.question, options: d.options, author_id: d.author_id,
+      counts: [0, 1, 2, 3].map((i) => this.eqV.filter((v) => v.day === d.day && v.option === i).length),
+      my_vote: this.eqV.find((v) => v.day === d.day && v.member_id === this.s.me)?.option ?? null,
+    }));
+  }
+  async eqQueue(): Promise<EqQueued[]> {
+    return this.eqQ.filter((x) => !x.used_on).sort((a, b) => a.created_at.localeCompare(b.created_at))
+      .map((x, i) => ({ id: x.id, author_id: x.author_id, question: x.question, options: x.options, created_at: x.created_at, queue_pos: i + 1 }))
+      .filter((x) => x.author_id === this.s.me || this.isAdmin());
+  }
+  async eqAdd(question: string, options: string[]) {
+    this.need(!!this.s.me, 'no_membre');
+    const q = question.trim(), o = options.map((x) => x.trim());
+    this.need(q.length >= 3 && q.length <= 200 && o.length === 4 && o.every((x) => x.length >= 1 && x.length <= 80)
+      && new Set(o.map((x) => x.toLowerCase())).size === 4, 'pregunta_invalida');
+    this.need(this.eqQ.filter((x) => x.author_id === this.s.me && !x.used_on).length < 10, 'massa_preguntes');
+    const id = uid(); this.eqQ.push({ id, author_id: this.s.me!, question: q, options: o, created_at: new Date().toISOString(), used_on: null }); this.save(); return id;
+  }
+  async eqDelete(id: string) {
+    const q = this.eqQ.find((x) => x.id === id && !x.used_on);
+    this.need(!!q && (q.author_id === this.s.me || this.isAdmin()));
+    this.s.eqQueue = this.eqQ.filter((x) => x.id !== id); this.save();
+  }
+  async pushSubscribe(sub: PushSub) {
+    this.need(!!this.s.me, 'no_membre');
+    this.s.push = [...(this.s.push ?? []).filter((x) => x.endpoint !== sub.endpoint), { ...sub, member_id: this.s.me! }]; this.save();
+  }
+  async pushUnsubscribe(endpoint: string) {
+    this.s.push = (this.s.push ?? []).filter((x) => x.endpoint !== endpoint); this.save();
   }
 }

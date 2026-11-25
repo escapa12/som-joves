@@ -3,6 +3,7 @@ import type { Api } from './api';
 import { humanError } from './api';
 import { DemoApi } from './demoApi';
 import { SupabaseApi } from './supabaseApi';
+import { syncPush } from './push';
 import type { AppData, Member } from './types';
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -57,7 +58,7 @@ export async function boot() {
   try {
     const meId = await api.init();
     set({ meId });
-    if (meId) await refresh();
+    if (meId) { await refresh(); syncPush(); }
   } catch (e) {
     toast(humanError(e), 'err');
   } finally {
@@ -72,7 +73,7 @@ export async function refresh() {
 
 export async function setMe(id: string | null) {
   set({ meId: id });
-  if (id) await refresh();
+  if (id) { await refresh(); syncPush(); }
 }
 
 /** Run a mutation, refresh data, show toast. Returns true on success. */

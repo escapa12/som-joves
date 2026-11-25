@@ -140,3 +140,10 @@ export interface FsVote { id: string; day: string; voter_id: string; target_id: 
 export interface FsRank { member_id: string; fdp_pct: number | null; sub_pct: number | null; votes: number }
 export interface FsVoteDraft { target: string; fdp: number; sub: number }
 export interface FsVoteFilter { day?: string; voter?: string; target?: string; from?: string; limit?: number }
+
+// Enquesta del dia
+export interface EqState { day: string; question: string; options: string[]; author_id: string | null; my_vote: number | null; answers: number; pending: number }
+export interface EqResult { member_id: string; option: number }
+export interface EqDay { day: string; question: string; options: string[]; author_id: string | null; counts: number[]; my_vote: number | null }
+export interface EqQueued { id: string; author_id: string; question: string; options: string[]; created_at: string; queue_pos: number }
+export interface PushSub { endpoint: string; p256dh: string; auth: string }

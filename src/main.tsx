@@ -1,5 +1,6 @@
 import { render } from 'preact';
 import { boot, useStore } from './core/store';
+import { registerSW } from './core/push';
 import { useRoute } from './core/router';
 import { modules } from './modules';
 import { Join } from './shell/Join';
@@ -32,3 +33,4 @@ function App() {
 
 render(<App />, document.getElementById('app')!);
 boot();
+registerSW();

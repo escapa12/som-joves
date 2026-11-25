@@ -275,3 +275,16 @@ button, .btn, .chip, .pick, .seg, .topbar, .tier-label { -webkit-user-select: no
 
 .nm-by { position: relative; flex: none; display: inline-grid; }
 .nm-by-badge { position: absolute; right: -6px; bottom: -4px; font-size: 1.05rem; filter: drop-shadow(0 1px 2px #000a); }
+
+/* ── Enquesta del dia ── */
+.eq-q { font-size: 1.3rem; margin: 0; }
+.eq-letter { display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 8px; background: var(--card2); font-size: .8rem; flex: none; }
+.eq-opt { display: flex; align-items: center; gap: .6rem; }
+.eq-opt.on .eq-letter { background: var(--accent); color: var(--accent-ink); }
+.eq-res { position: relative; overflow: hidden; border-radius: 12px; border: 2px solid var(--line); padding: .55rem .7rem; }
+.eq-res-bar { position: absolute; inset: 0 auto 0 0; background: #ffffff14; transition: width .4s; }
+.eq-res.win .eq-res-bar { background: #ffcc3330; }
+.eq-res.mine { border-color: var(--accent); }
+.eq-res-row, .eq-faces { position: relative; }
+.eq-faces { display: flex; flex-wrap: wrap; gap: .25rem; margin-top: .4rem; }
+.eq-push { border-color: var(--accent); }
