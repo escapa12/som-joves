@@ -50,11 +50,23 @@ function Board({ placements, selected, onTier, renderFace }: {
   );
 }
 
+const clearGhosts = () => {
+  document.querySelectorAll('.drag-ghost').forEach((el) => el.remove());
+  document.querySelectorAll('.drop-hover').forEach((el) => el.classList.remove('drop-hover'));
+};
+if (typeof window !== 'undefined') {
+  window.addEventListener('hashchange', clearGhosts);
+  window.addEventListener('blur', clearGhosts);
+}
+
 /** Face that can be tapped (select) or dragged (pointer events, works on touch). */
 function DragFace({ id, selected, onTap, onDrop }: { id: string; selected: boolean; onTap: () => void; onDrop: (target: Tier | 'bench' | null) => void }) {
   const st = useRef<{ x: number; y: number; ghost: HTMLElement | null; pid: number } | null>(null);
   const m = memberById(id);
+  useEffect(() => () => { if (st.current?.ghost) clearGhosts(); st.current = null; }, []);
+  const abort = () => { clearGhosts(); st.current = null; };
   const down = (e: PointerEvent) => {
+    clearGhosts();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     st.current = { x: e.clientX, y: e.clientY, ghost: null, pid: e.pointerId };
   };
@@ -80,15 +92,14 @@ function DragFace({ id, selected, onTap, onDrop }: { id: string; selected: boole
     st.current = null;
     if (!s) return;
     if (s.ghost) {
-      s.ghost.remove();
-      document.querySelectorAll('.drop-hover').forEach((el) => el.classList.remove('drop-hover'));
+      clearGhosts();
       const el = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-tier],[data-bench]') as HTMLElement | null;
       onDrop(el ? ((el.dataset.tier as Tier) ?? 'bench') : null);
     } else onTap();
   };
   return (
     <div class={'drag-face' + (selected ? ' selected' : '')} onPointerDown={down} onPointerMove={move} onPointerUp={up}
-      onPointerCancel={() => { st.current?.ghost?.remove(); st.current = null; }} onClick={(e) => e.stopPropagation()}>
+      onPointerCancel={abort} onLostPointerCapture={() => { if (st.current?.ghost) abort(); }} onClick={(e) => e.stopPropagation()}>
       <Avatar m={m} size={52} />
       <span>{m?.nickname}</span>
     </div>
@@ -116,7 +127,7 @@ function Create() {
     setSel(null);
   };
   const face = (id: string) => (
-    <DragFace id={id} selected={sel === id} onTap={() => setSel(sel === id ? null : id)} onDrop={(t) => place(id, t)} />
+    <DragFace key={id} id={id} selected={sel === id} onTap={() => setSel(sel === id ? null : id)} onDrop={(t) => place(id, t)} />
   );
   const cats = [real, ...decoys].map((c) => c.trim());
   const valid = cats.every(Boolean) && new Set(cats.map((c) => c.toLowerCase())).size === cats.length;
